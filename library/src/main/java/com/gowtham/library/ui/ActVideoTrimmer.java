@@ -770,7 +770,7 @@ public class ActVideoTrimmer extends LocalizationActivity {
             };
 
     private String getFileName() {
-        String path = getExternalFilesDir("TrimmedVideo").getPath();
+        String path = getCacheDir().getPath();
         Calendar calender = Calendar.getInstance();
         String fileDateTime = calender.get(Calendar.YEAR) + "_" +
                 calender.get(Calendar.MONTH) + "_" +
