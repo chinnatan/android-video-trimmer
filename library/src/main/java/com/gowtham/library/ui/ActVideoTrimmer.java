@@ -38,12 +38,20 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.util.Pair;
-import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.media3.common.AudioAttributes;
+import androidx.media3.common.C;
+import androidx.media3.common.MediaItem;
+import androidx.media3.common.Player;
 import androidx.media3.common.util.UnstableApi;
+import androidx.media3.datasource.DataSource;
+import androidx.media3.datasource.DefaultDataSource;
 import androidx.media3.effect.Presentation;
+import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.exoplayer.source.MediaSource;
+import androidx.media3.exoplayer.source.ProgressiveMediaSource;
 import androidx.media3.transformer.Composition;
 import androidx.media3.transformer.DefaultEncoderFactory;
 import androidx.media3.transformer.EditedMediaItem;
@@ -53,22 +61,13 @@ import androidx.media3.transformer.ExportResult;
 import androidx.media3.transformer.ProgressHolder;
 import androidx.media3.transformer.Transformer;
 import androidx.media3.transformer.VideoEncoderSettings;
+import androidx.media3.ui.AspectRatioFrameLayout;
+import androidx.media3.ui.PlayerView;
 
 import com.akexorcist.localizationactivity.ui.LocalizationActivity;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
 import com.bumptech.glide.request.RequestOptions;
-import com.google.android.exoplayer2.C;
-import com.google.android.exoplayer2.ExoPlayer;
-import com.google.android.exoplayer2.MediaItem;
-import com.google.android.exoplayer2.Player;
-import com.google.android.exoplayer2.audio.AudioAttributes;
-import com.google.android.exoplayer2.source.MediaSource;
-import com.google.android.exoplayer2.source.ProgressiveMediaSource;
-import com.google.android.exoplayer2.ui.AspectRatioFrameLayout;
-import com.google.android.exoplayer2.ui.StyledPlayerView;
-import com.google.android.exoplayer2.upstream.DataSource;
-import com.google.android.exoplayer2.upstream.DefaultDataSource;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import com.gowtham.library.R;
@@ -97,10 +96,11 @@ import java.util.Objects;
 import java.util.concurrent.Executors;
 
 
-@UnstableApi public class ActVideoTrimmer extends LocalizationActivity {
+@UnstableApi
+public class ActVideoTrimmer extends LocalizationActivity {
 
     private static final int PER_REQ_CODE = 115;
-    private StyledPlayerView playerView;
+    private PlayerView playerView;
     private ExoPlayer videoPlayer;
 
     private ImageView imagePlayPause;
@@ -181,35 +181,31 @@ import java.util.concurrent.Executors;
         setUpToolBar(getSupportActionBar(), trimVideoOptions.title);
         toolbar.setNavigationOnClickListener(v -> finish());
         progressView = new CustomProgressView(this);
-        View viewThumbnails= findViewById(R.id.view_thumbnails);
-        View viewTimer= findViewById(R.id.view_timer);
+        View viewThumbnails = findViewById(R.id.view_thumbnails);
+        View viewTimer = findViewById(R.id.view_timer);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             getWindow().setNavigationBarContrastEnforced(false);
         }
-        View rootView= findViewById(android.R.id.content);
-        ViewCompat.setOnApplyWindowInsetsListener(toolbar, new OnApplyWindowInsetsListener() {
-            @NonNull
-            @Override
-            public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat insets) {
-                Insets topInsets= insets.getInsets(WindowInsetsCompat.Type.displayCutout() | WindowInsetsCompat.Type.statusBars());
-                Insets btmInsets= insets.getInsets(WindowInsetsCompat.Type.navigationBars());
+        View rootView = findViewById(android.R.id.content);
+        ViewCompat.setOnApplyWindowInsetsListener(toolbar, (v, insets) -> {
+            Insets topInsets = insets.getInsets(WindowInsetsCompat.Type.displayCutout() | WindowInsetsCompat.Type.statusBars());
+            Insets btmInsets = insets.getInsets(WindowInsetsCompat.Type.navigationBars());
 
-                int left= topInsets.left!=0 ? topInsets.left : btmInsets.left;
-                int right= topInsets.right!=0 ? topInsets.right : btmInsets.right;
-                rootView.setPadding(left, 0, right, 0);
-                toolbar.setPadding(toolbar.getPaddingLeft(), topInsets.top, toolbar.getPaddingRight(),
-                        toolbar.getPaddingBottom());
+            int left = topInsets.left != 0 ? topInsets.left : btmInsets.left;
+            int right = topInsets.right != 0 ? topInsets.right : btmInsets.right;
+            rootView.setPadding(left, 0, right, 0);
+            toolbar.setPadding(toolbar.getPaddingLeft(), topInsets.top, toolbar.getPaddingRight(),
+                    toolbar.getPaddingBottom());
 
-                ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) viewThumbnails.getLayoutParams();
-                params.bottomMargin =btmInsets.bottom + ViewUtil.dpToPx(80);
-                viewThumbnails.setLayoutParams(params);
+            ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) viewThumbnails.getLayoutParams();
+            params.bottomMargin = btmInsets.bottom + ViewUtil.dpToPx(80);
+            viewThumbnails.setLayoutParams(params);
 
-                ViewGroup.MarginLayoutParams endDurationLayoutParams = (ViewGroup.MarginLayoutParams) viewTimer.getLayoutParams();
-                endDurationLayoutParams.bottomMargin =btmInsets.bottom + ViewUtil.dpToPx(58);
-                viewTimer.setLayoutParams(endDurationLayoutParams);
-                return insets;
-            }
+            ViewGroup.MarginLayoutParams endDurationLayoutParams = (ViewGroup.MarginLayoutParams) viewTimer.getLayoutParams();
+            endDurationLayoutParams.bottomMargin = btmInsets.bottom + ViewUtil.dpToPx(58);
+            viewTimer.setLayoutParams(endDurationLayoutParams);
+            return insets;
         });
     }
 
@@ -238,7 +234,7 @@ import java.util.concurrent.Executors;
         ImageView imageEight = findViewById(R.id.image_eight);
         ImageView imageNine = findViewById(R.id.image_nine);
         ImageView imageTen = findViewById(R.id.image_ten);
-        resChangeSpinner= findViewById(R.id.txt_change_res);
+        resChangeSpinner = findViewById(R.id.txt_change_res);
 
         View viewThumbnails = findViewById(R.id.view_thumbnails);
 
@@ -249,13 +245,13 @@ import java.util.concurrent.Executors;
         initPlayer();
 
         fileUri = Uri.parse(bundle.getString(TrimVideo.TRIM_VIDEO_URI));
-        isCompressionEnabled= bundle.getBoolean(TrimVideo.ENABLE_COMPRESSION, true);
+        isCompressionEnabled = bundle.getBoolean(TrimVideo.ENABLE_COMPRESSION, true);
 
-        if(!isCompressionEnabled){
+        if (!isCompressionEnabled) {
             resChangeSpinner.setVisibility(View.GONE);
         }
 
-        String selectVideoRes = savedInstanceState!=null ? savedInstanceState.getString("selectedRes") : "";
+        String selectVideoRes = savedInstanceState != null ? savedInstanceState.getString("selectedRes") : "";
         if (checkStoragePermission())
             setDataInView(selectVideoRes);
     }
@@ -290,7 +286,7 @@ import java.util.concurrent.Executors;
             playerView.setPlayer(videoPlayer);
             AudioAttributes audioAttributes = new AudioAttributes.Builder()
                     .setUsage(C.USAGE_MEDIA)
-                    .setContentType(C.CONTENT_TYPE_MOVIE)
+                    .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
                     .build();
             videoPlayer.setAudioAttributes(audioAttributes, true);
         } catch (Exception e) {
@@ -326,8 +322,8 @@ import java.util.concurrent.Executors;
 
     private void setSelectedVideoRes(String selectVideoRes) {
         try {
-            Pair<Integer, Integer> wh= TrimmerUtils.getVideoRes(this, fileUri);
-            selectedRes= selectVideoRes!=null && !selectVideoRes.isEmpty() ?
+            Pair<Integer, Integer> wh = TrimmerUtils.getVideoRes(this, fileUri);
+            selectedRes = selectVideoRes != null && !selectVideoRes.isEmpty() ?
                     fromDisplayName(selectVideoRes) : TrimmerUtils.classifyResolution(wh.first, wh.second);
             resChangeSpinner.setText(selectedRes.getDisplayName());
         } catch (Exception e) {
@@ -348,16 +344,16 @@ import java.util.concurrent.Executors;
 
         Context wrapperContext = new ContextThemeWrapper(ActVideoTrimmer.this, R.style.AppTheme_PopupMenu);
         PopupMenu popupMenu = new PopupMenu(wrapperContext, anchorView);
-        Log.e("TAG", "showResolutionMenu: "+popupMenu.getGravity());
+        Log.e("TAG", "showResolutionMenu: " + popupMenu.getGravity());
 
 
-        List<String> resolutions= getVideoResNames(this, fileUri);
+        List<String> resolutions = getVideoResNames(this, fileUri);
         for (String resolution : resolutions) {
             popupMenu.getMenu().add(resolution);
         }
 
         popupMenu.setOnMenuItemClickListener(menuItem -> {
-            Log.e("TAG", "showResolutionMenu: "+menuItem.getTitle().toString());
+            Log.e("TAG", "showResolutionMenu: " + menuItem.getTitle().toString());
             selectedRes = fromDisplayName(menuItem.getTitle().toString());
             anchorView.setText(selectedRes.getDisplayName());
             return true;
@@ -636,7 +632,8 @@ import java.util.concurrent.Executors;
         return super.onOptionsItemSelected(item);
     }
 
-    @UnstableApi private void trimVideo() {
+    @UnstableApi
+    private void trimVideo() {
         if (isValidVideo) {
             //not exceed given maxDuration if has given
             outputPath = getFileName();
@@ -657,29 +654,29 @@ import java.util.concurrent.Executors;
 
             Pair<Integer, Integer> videoRes = TrimmerUtils.getVideoRes(this, fileUri);
 
-            int originalWidth= videoRes.first;
-            int originalHeight= videoRes.second;
+            int originalWidth = videoRes.first;
+            int originalHeight = videoRes.second;
 
             float reduceRatio = VideoResKt.getDownScaleRatio(
                     this, fileUri, selectedRes
             );
-            Log.e("TAG", "trimVideo: reduceRatio: "+reduceRatio);
+            Log.e("TAG", "trimVideo: reduceRatio: " + reduceRatio);
             // originalwidth= 720 and selectedRes= 360
             // reduceRatio would be 0.5f
             // diffWidth = originalwidth * 0.5f = 360
             // finalWidth = originalwidth - diffWidth = 360
-            int finalWidth= originalWidth;
-            int finalHeight= originalHeight;
+            int finalWidth = originalWidth;
+            int finalHeight = originalHeight;
 
-            if(reduceRatio<1f && reduceRatio>0f){
+            if (reduceRatio < 1f && reduceRatio > 0f) {
                 float diffWidth = originalWidth * reduceRatio;
                 float diffHeight = originalHeight * reduceRatio;
-                finalWidth = Math.round(originalWidth-diffWidth);
-                finalHeight = Math.round(originalHeight-diffHeight);
+                finalWidth = Math.round(originalWidth - diffWidth);
+                finalHeight = Math.round(originalHeight - diffHeight);
             }
 
-            Log.e("TAG", "trimVideo: originalVideoRes: "+originalWidth+"x"+originalHeight);
-            Log.e("TAG", "trimVideo: reducedVideoRes: "+finalWidth+"x"+finalHeight);
+            Log.e("TAG", "trimVideo: originalVideoRes: " + originalWidth + "x" + originalHeight);
+            Log.e("TAG", "trimVideo: reducedVideoRes: " + finalWidth + "x" + finalHeight);
             EditedMediaItem editedMediaItem = new EditedMediaItem.Builder(mediaItem)
                     .setEffects(new Effects(ImmutableList.of(),
                             ImmutableList.of(Presentation.createForWidthAndHeight(finalWidth,
@@ -687,12 +684,12 @@ import java.util.concurrent.Executors;
                     .build();
 
 
-            long bitRate= TrimmerUtils.getBitRate(this, fileUri);
+            long bitRate = TrimmerUtils.getBitRate(this, fileUri);
 
-            if(isCompressionEnabled){
-                HashMap<VideoRes, Long> videoResMap= TrimmerUtils.getResBitRate(this, fileUri);
-                Long compressionBitRate= videoResMap.get(selectedRes);
-                bitRate= compressionBitRate!=null ? compressionBitRate : bitRate;
+            if (isCompressionEnabled) {
+                HashMap<VideoRes, Long> videoResMap = TrimmerUtils.getResBitRate(this, fileUri);
+                Long compressionBitRate = videoResMap.get(selectedRes);
+                bitRate = compressionBitRate != null ? compressionBitRate : bitRate;
             }
             transformer =
                     new Transformer.Builder(this)
@@ -712,7 +709,7 @@ import java.util.concurrent.Executors;
             ProgressHolder progressHolder = new ProgressHolder();
 
             Handler mainHandler = new Handler(Looper.getMainLooper());
-            if(progressRunnable!=null){
+            if (progressRunnable != null) {
                 mainHandler.removeCallbacks(progressRunnable);
             }
             progressRunnable = new Runnable() {
@@ -722,8 +719,8 @@ import java.util.concurrent.Executors;
                     try {
                         @Transformer.ProgressState int progressState = transformer.getProgress(progressHolder);
                         if (progressState == Transformer.PROGRESS_STATE_AVAILABLE) {
-                            String progress = getString(R.string.txt_trimming_video)+ " "+progressHolder.progress+"%"; // This is the percentage (0-100)
-                            if (txtProgress!=null){
+                            String progress = getString(R.string.txt_trimming_video) + " " + progressHolder.progress + "%"; // This is the percentage (0-100)
+                            if (txtProgress != null) {
                                 txtProgress.setText(progress);
                             }
                         }
@@ -760,9 +757,9 @@ import java.util.concurrent.Executors;
                 public void onError(Composition composition, ExportResult result,
                                     ExportException exception) {
                     if (dialog.isShowing()) dialog.dismiss();
-                    Log.e("ActVideoTrimmer:: ", "Composition onError: "+composition);
-                    Log.e("ActVideoTrimmer:: ", "ExportResult onError: "+result);
-                    Log.e("ActVideoTrimmer:: ", "ExportException onError: ",exception);
+                    Log.e("ActVideoTrimmer:: ", "Composition onError: " + composition);
+                    Log.e("ActVideoTrimmer:: ", "ExportResult onError: " + result);
+                    Log.e("ActVideoTrimmer:: ", "ExportException onError: ", exception);
                     runOnUiThread(() -> Toast.makeText(ActVideoTrimmer.this, "Failed to trim", Toast.LENGTH_SHORT).show());
                 }
             };
@@ -820,6 +817,7 @@ import java.util.concurrent.Executors;
     }
 
     private TextView txtProgress;
+
     private void showProcessingDialog() {
         try {
             dialog = new Dialog(this);
