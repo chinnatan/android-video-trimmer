@@ -372,10 +372,8 @@ public class ActVideoTrimmer extends LocalizationActivity {
                     LogMessage.v("VideoPath:: fileUri: " + fileUri);
                     progressBar.setVisibility(View.GONE);
                     totalDuration = TrimmerUtils.getDuration(ActVideoTrimmer.this, fileUri);
-                    imagePlayPause.setOnClickListener(v ->
-                            onVideoClicked());
-                    Objects.requireNonNull(playerView.getVideoSurfaceView()).setOnClickListener(v ->
-                            onVideoClicked());
+                    imagePlayPause.setOnClickListener(v -> onVideoClicked());
+                    Objects.requireNonNull(playerView.getVideoSurfaceView()).setOnClickListener(v -> onVideoClicked());
                     initTrimData();
                     buildMediaSource();
                     loadThumbnails();
@@ -401,12 +399,7 @@ public class ActVideoTrimmer extends LocalizationActivity {
     }
 
     private void setUpResChanger() {
-        resChangeSpinner.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                showResolutionMenu(resChangeSpinner);
-            }
-        });
+        resChangeSpinner.setOnClickListener(view -> showResolutionMenu(resChangeSpinner));
     }
 
     private void showResolutionMenu(TextView anchorView) {
@@ -485,8 +478,7 @@ public class ActVideoTrimmer extends LocalizationActivity {
             videoPlayer.addListener(new Player.Listener() {
                 @Override
                 public void onPlayWhenReadyChanged(boolean playWhenReady, int reason) {
-                    imagePlayPause.setVisibility(playWhenReady ? View.GONE :
-                            View.VISIBLE);
+                    imagePlayPause.setVisibility(playWhenReady ? View.GONE : View.VISIBLE);
                 }
 
                 @Override
@@ -720,7 +712,6 @@ public class ActVideoTrimmer extends LocalizationActivity {
             progressRunnable = new Runnable() {
                 @Override
                 public void run() {
-
                     try {
                         @Transformer.ProgressState int progressState = transformer.getProgress(progressHolder);
                         if (progressState == Transformer.PROGRESS_STATE_AVAILABLE) {
@@ -759,12 +750,11 @@ public class ActVideoTrimmer extends LocalizationActivity {
                 }
 
                 @Override
-                public void onError(Composition composition, ExportResult result,
-                                    ExportException exception) {
+                public void onError(Composition composition, ExportResult result, ExportException exception) {
                     if (dialog.isShowing()) dialog.dismiss();
-                    Log.e("ActVideoTrimmer:: ", "Composition onError: " + composition);
-                    Log.e("ActVideoTrimmer:: ", "ExportResult onError: " + result);
-                    Log.e("ActVideoTrimmer:: ", "ExportException onError: ", exception);
+                    Log.e(TAG, "Composition onError: " + composition);
+                    Log.e(TAG, "ExportResult onError: " + result);
+                    Log.e(TAG, "ExportException onError: ", exception);
                     runOnUiThread(() -> Toast.makeText(ActVideoTrimmer.this, "Failed to trim", Toast.LENGTH_SHORT).show());
                 }
             };

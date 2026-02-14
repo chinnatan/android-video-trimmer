@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="txt_empty" />
+    <string name="txt_done">เสร็จสิ้น</string>
+    <string name="txt_title_not_supported">แจ้งเตือน!</string>
+    <string name="txt_msg_not_supported">ขออภัย อุปกรณ์ไม่รองรับ</string>
+    <string name="txt_trimming_video">กำลังประมวลผล…</string>
+    <string name="txt_failed_to_trim">ประมวลผลไม่สำเร็จ</string>
+    <string name="txt_cancel">ยกเลิก</string>
+    <string name="txt_dlah">\\</string>
+    <string name="txt_smaller">วิดีโอควรมีขนาดเล็กกว่า</string>
+    <string name="edit_video">แก้ไขวิดีโอ</string>
+    <string name="txt_compress_video">กำลังย่อขนาดวิดีโอ…</string>
+    <string name="txt_edt_video">แก้ไขวิดีโอ</string>
+    <string name="yes">ใช่</string>
+    <string name="no">ไม่</string>
+    <string name="open_file_location">เปิดตำแหน่งไฟล์ใช่หรือไม่?</string>
+</resources>
