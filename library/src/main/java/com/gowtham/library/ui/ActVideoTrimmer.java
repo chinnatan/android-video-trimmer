@@ -99,6 +99,8 @@ import java.util.concurrent.Executors;
 @UnstableApi
 public class ActVideoTrimmer extends LocalizationActivity {
 
+    private final String TAG = "ActVideoTrimmer";
+
     private static final int PER_REQ_CODE = 115;
     private PlayerView playerView;
     private ExoPlayer videoPlayer;
@@ -256,14 +258,81 @@ public class ActVideoTrimmer extends LocalizationActivity {
             setDataInView(selectVideoRes);
     }
 
-    private double bitsToMbs(long bits) {
-        return bits / 8.0 / 1024.0 / 1024;
-    }
-
     @Override
     protected void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putString("selectedRes", selectedRes.getDisplayName());
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == PER_REQ_CODE) {
+            for (int i = 0; i < permissions.length; i++) {
+                Log.e(TAG, "onRequestPermissionsResult: " + permissions[i] + " : " + grantResults[i]);
+            }
+            if (isPermissionOk(grantResults))
+                setDataInView("");
+            else {
+                Toast.makeText(this, "Storage permission denied", Toast.LENGTH_SHORT).show();
+                finish();
+            }
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        videoPlayer.setPlayWhenReady(false);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        try {
+            if (videoPlayer != null)
+                videoPlayer.release();
+            if (progressView != null && progressView.isShowing())
+                progressView.dismiss();
+            File f = new File(getCacheDir(), "temp_video_file");
+            if (f.exists()) {
+                f.delete();
+            }
+            stopRepeatingTask();
+            transformer.cancel();
+        } catch (Exception e) {
+            LogMessage.e(Log.getStackTraceString(e));
+        }
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_done, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        menuDone = menu.findItem(R.id.action_done);
+        return super.onPrepareOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+        if (id == R.id.action_done) {
+            //preventing multiple clicks
+            if (SystemClock.elapsedRealtime() - lastClickedTime < 800)
+                return true;
+            lastClickedTime = SystemClock.elapsedRealtime();
+            trimVideo();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    private double bitsToMbs(long bits) {
+        return bits / 8.0 / 1024.0 / 1024;
     }
 
     private void setUpToolBar(ActionBar actionBar, String title) {
@@ -272,7 +341,7 @@ public class ActVideoTrimmer extends LocalizationActivity {
             actionBar.setDisplayShowHomeEnabled(true);
             actionBar.setTitle(title != null ? title : getString(R.string.txt_edt_video));
         } catch (Exception e) {
-            Log.e("TAG", "initPlayer: ", e);
+            Log.e(TAG, "initPlayer: ", e);
         }
     }
 
@@ -290,7 +359,7 @@ public class ActVideoTrimmer extends LocalizationActivity {
                     .build();
             videoPlayer.setAudioAttributes(audioAttributes, true);
         } catch (Exception e) {
-            Log.e("TAG", "initPlayer: ", e);
+            Log.e(TAG, "initPlayer: ", e);
         }
     }
 
@@ -344,7 +413,7 @@ public class ActVideoTrimmer extends LocalizationActivity {
 
         Context wrapperContext = new ContextThemeWrapper(ActVideoTrimmer.this, R.style.AppTheme_PopupMenu);
         PopupMenu popupMenu = new PopupMenu(wrapperContext, anchorView);
-        Log.e("TAG", "showResolutionMenu: " + popupMenu.getGravity());
+        Log.e(TAG, "showResolutionMenu: " + popupMenu.getGravity());
 
 
         List<String> resolutions = getVideoResNames(this, fileUri);
@@ -353,7 +422,7 @@ public class ActVideoTrimmer extends LocalizationActivity {
         }
 
         popupMenu.setOnMenuItemClickListener(menuItem -> {
-            Log.e("TAG", "showResolutionMenu: " + menuItem.getTitle().toString());
+            Log.e(TAG, "showResolutionMenu: " + menuItem.getTitle().toString());
             selectedRes = fromDisplayName(menuItem.getTitle().toString());
             anchorView.setText(selectedRes.getDisplayName());
             return true;
@@ -568,70 +637,6 @@ public class ActVideoTrimmer extends LocalizationActivity {
         }
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == PER_REQ_CODE) {
-            if (isPermissionOk(grantResults))
-                setDataInView("");
-            else {
-                Toast.makeText(this, "Storage permission denied", Toast.LENGTH_SHORT).show();
-                finish();
-            }
-        }
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        videoPlayer.setPlayWhenReady(false);
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        try {
-            if (videoPlayer != null)
-                videoPlayer.release();
-            if (progressView != null && progressView.isShowing())
-                progressView.dismiss();
-            File f = new File(getCacheDir(), "temp_video_file");
-            if (f.exists()) {
-                f.delete();
-            }
-            stopRepeatingTask();
-            transformer.cancel();
-        } catch (Exception e) {
-            LogMessage.e(Log.getStackTraceString(e));
-        }
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_done, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onPrepareOptionsMenu(Menu menu) {
-        menuDone = menu.findItem(R.id.action_done);
-        return super.onPrepareOptionsMenu(menu);
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        int id = item.getItemId();
-        if (id == R.id.action_done) {
-            //preventing multiple clicks
-            if (SystemClock.elapsedRealtime() - lastClickedTime < 800)
-                return true;
-            lastClickedTime = SystemClock.elapsedRealtime();
-            trimVideo();
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
-    }
-
     @UnstableApi
     private void trimVideo() {
         if (isValidVideo) {
@@ -660,7 +665,7 @@ public class ActVideoTrimmer extends LocalizationActivity {
             float reduceRatio = VideoResKt.getDownScaleRatio(
                     this, fileUri, selectedRes
             );
-            Log.e("TAG", "trimVideo: reduceRatio: " + reduceRatio);
+            Log.e(TAG, "trimVideo: reduceRatio: " + reduceRatio);
             // originalwidth= 720 and selectedRes= 360
             // reduceRatio would be 0.5f
             // diffWidth = originalwidth * 0.5f = 360
@@ -675,8 +680,8 @@ public class ActVideoTrimmer extends LocalizationActivity {
                 finalHeight = Math.round(originalHeight - diffHeight);
             }
 
-            Log.e("TAG", "trimVideo: originalVideoRes: " + originalWidth + "x" + originalHeight);
-            Log.e("TAG", "trimVideo: reducedVideoRes: " + finalWidth + "x" + finalHeight);
+            Log.e(TAG, "trimVideo: originalVideoRes: " + originalWidth + "x" + originalHeight);
+            Log.e(TAG, "trimVideo: reducedVideoRes: " + finalWidth + "x" + finalHeight);
             EditedMediaItem editedMediaItem = new EditedMediaItem.Builder(mediaItem)
                     .setEffects(new Effects(ImmutableList.of(),
                             ImmutableList.of(Presentation.createForWidthAndHeight(finalWidth,
@@ -728,7 +733,7 @@ public class ActVideoTrimmer extends LocalizationActivity {
                             mainHandler.postDelayed(this, 300); // Repeat after 500ms
                         }
                     } catch (Exception e) {
-                        Log.e("TAG", "run: ", e);
+                        Log.e(TAG, "run: ", e);
                     }
                 }
             };
@@ -839,31 +844,19 @@ public class ActVideoTrimmer extends LocalizationActivity {
     }
 
     private boolean checkStoragePermission() {
-        String uri= FileUtilKt.getActualFileUri(this, fileUri);
+        String uri = FileUtilKt.getActualFileUri(this, fileUri);
 
-        if(uri!=null && new File(uri).canRead()){
-            Log.e("VideoTrimmer", "checkStoragePermission: has no permission");
+        if (uri != null && new File(uri).canRead()) {
+            Log.e(TAG, "checkStoragePermission: has no permission");
             // might have used photo picker or file picker. therefore have read access without permission.
             return true;
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            boolean hasPermission = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
-                    == PackageManager.PERMISSION_GRANTED ||
-                    ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_VIDEO)
-                            == PackageManager.PERMISSION_GRANTED;
-            if (hasPermission) {
-                return true;
-            } else {
-                return checkPermission(
-                        Manifest.permission.READ_MEDIA_VIDEO);
-            }
-        } else if (Build.VERSION.SDK_INT == Build.VERSION_CODES.TIRAMISU) {
-            return checkPermission(
-                    Manifest.permission.READ_MEDIA_VIDEO);
+        if (Build.VERSION.SDK_INT == Build.VERSION_CODES.TIRAMISU || Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            // for Android 14 and above, we not check for both READ_MEDIA_VIDEO and READ_EXTERNAL_STORAGE permissions following the official documentation https://support.google.com/googleplay/android-developer/answer/14115180?hl=en
+            return true;
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            return checkPermission(
-                    Manifest.permission.READ_EXTERNAL_STORAGE);
+            return checkPermission(Manifest.permission.READ_EXTERNAL_STORAGE);
         } else
             return checkPermission(Manifest.permission.READ_EXTERNAL_STORAGE);
 
@@ -872,15 +865,13 @@ public class ActVideoTrimmer extends LocalizationActivity {
     private boolean checkPermission(String... permissions) {
         boolean allPermitted = false;
         for (String permission : permissions) {
-            allPermitted = (ContextCompat.checkSelfPermission(this, permission)
-                    == PackageManager.PERMISSION_GRANTED);
+            allPermitted = (ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED);
             if (!allPermitted)
                 break;
         }
         if (allPermitted)
             return true;
-        ActivityCompat.requestPermissions(this, permissions,
-                PER_REQ_CODE);
+        ActivityCompat.requestPermissions(this, permissions, PER_REQ_CODE);
         return false;
     }
 
